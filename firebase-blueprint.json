@@ -1,0 +1,139 @@
+{
+  "entities": {
+    "Expense": {
+      "title": "Expense",
+      "description": "A financial transaction representing income or expense",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated user UID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Description of the transaction"
+        },
+        "amount": {
+          "type": "number",
+          "description": "Transaction monetary amount"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["EXPENSE", "INCOME"],
+          "description": "Type of transaction"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category such as Food & Dining, Transportation, Utilities, Entertainment, Salary"
+        },
+        "date": {
+          "type": "string",
+          "description": "ISO date string or human readable date"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional notes"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation. Clients must write FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update. Clients must write FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "amount", "type", "category", "createdAt"]
+    },
+    "Budget": {
+      "title": "Budget",
+      "description": "Budget limit and alert threshold for an expense category",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated user UID"
+        },
+        "category": {
+          "type": "string",
+          "description": "Expense category being budgeted"
+        },
+        "monthlyLimit": {
+          "type": "number",
+          "description": "Maximum spending budget per month"
+        },
+        "alertThresholdPercent": {
+          "type": "number",
+          "description": "Percentage at which to trigger budget alert (e.g. 80 for 80%)"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation. Clients must write FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update. Clients must write FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "category", "monthlyLimit", "alertThresholdPercent", "createdAt"]
+    },
+    "SavingsGoal": {
+      "title": "SavingsGoal",
+      "description": "A target savings goal with progress tracking",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Authenticated user UID"
+        },
+        "title": {
+          "type": "string",
+          "description": "Title of the savings goal"
+        },
+        "targetAmount": {
+          "type": "number",
+          "description": "Target amount to save"
+        },
+        "currentAmount": {
+          "type": "number",
+          "description": "Current amount saved so far"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of creation. Clients must write FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last update. Clients must write FieldValue.serverTimestamp()."
+        }
+      },
+      "required": ["userId", "title", "targetAmount", "currentAmount", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/expenses/{expenseId}": {
+      "schema": {
+        "$ref": "#/entities/Expense"
+      },
+      "description": "User personal financial transactions and expenses"
+    },
+    "/users/{userId}/budgets/{budgetId}": {
+      "schema": {
+        "$ref": "#/entities/Budget"
+      },
+      "description": "User category budget thresholds and limits for budget alerts"
+    },
+    "/users/{userId}/goals/{goalId}": {
+      "schema": {
+        "$ref": "#/entities/SavingsGoal"
+      },
+      "description": "User savings and financial goals"
+    }
+  }
+}

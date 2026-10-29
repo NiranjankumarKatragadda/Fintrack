@@ -1,0 +1,6 @@
+{
+  "name": "FinTrack",
+  "description": "Personal finance manager with real-time expense tracking, category budgets, visual analytics, and proactive budget alerts.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

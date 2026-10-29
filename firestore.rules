@@ -1,0 +1,132 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidExpense(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             (data.amount is int || data.amount is float) && data.amount > 0 &&
+             data.type is string && (data.type == 'EXPENSE' || data.type == 'INCOME') &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             (!('date' in data) || (data.date is string && data.date.size() <= 50)) &&
+             (!('note' in data) || (data.note is string && data.note.size() <= 500));
+    }
+
+    function isValidBudget(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             (data.monthlyLimit is int || data.monthlyLimit is float) && data.monthlyLimit > 0 &&
+             (data.alertThresholdPercent is int || data.alertThresholdPercent is float) &&
+             data.alertThresholdPercent >= 1 && data.alertThresholdPercent <= 200;
+    }
+
+    function isValidGoal(data, userId) {
+      return data.userId is string &&
+             data.userId == userId &&
+             data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+             (data.targetAmount is int || data.targetAmount is float) && data.targetAmount > 0 &&
+             (data.currentAmount is int || data.currentAmount is float) && data.currentAmount >= 0;
+    }
+
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+
+      // Expenses Subcollection
+      match /expenses/{expenseId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(expenseId);
+        allow delete: if isOwner(userId) && isValidId(expenseId);
+
+        allow create: if isOwner(userId) && isValidId(expenseId) &&
+                         request.resource.data.userId == userId &&
+                         request.resource.data.keys().hasAll(['userId', 'title', 'amount', 'type', 'category', 'createdAt']) &&
+                         request.resource.data.keys().hasOnly(['userId', 'title', 'amount', 'type', 'category', 'date', 'note', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.createdAt is timestamp &&
+                         request.resource.data.createdAt <= request.time &&
+                         (!('updatedAt' in request.resource.data) ||
+                          (request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time)) &&
+                         isValidExpense(request.resource.data, userId);
+
+        allow update: if isOwner(userId) && isValidId(expenseId) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.updatedAt is timestamp &&
+                         request.resource.data.updatedAt <= request.time &&
+                         isValidExpense(request.resource.data, userId) &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'amount', 'type', 'category', 'date', 'note', 'updatedAt']);
+      }
+
+      // Budgets Subcollection
+      match /budgets/{budgetId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(budgetId);
+        allow delete: if isOwner(userId) && isValidId(budgetId);
+
+        allow create: if isOwner(userId) && isValidId(budgetId) &&
+                         request.resource.data.userId == userId &&
+                         request.resource.data.keys().hasAll(['userId', 'category', 'monthlyLimit', 'alertThresholdPercent', 'createdAt']) &&
+                         request.resource.data.keys().hasOnly(['userId', 'category', 'monthlyLimit', 'alertThresholdPercent', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.createdAt is timestamp &&
+                         request.resource.data.createdAt <= request.time &&
+                         (!('updatedAt' in request.resource.data) ||
+                          (request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time)) &&
+                         isValidBudget(request.resource.data, userId);
+
+        allow update: if isOwner(userId) && isValidId(budgetId) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.updatedAt is timestamp &&
+                         request.resource.data.updatedAt <= request.time &&
+                         isValidBudget(request.resource.data, userId) &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['category', 'monthlyLimit', 'alertThresholdPercent', 'updatedAt']);
+      }
+
+      // Savings Goals Subcollection
+      match /goals/{goalId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId) && isValidId(goalId);
+        allow delete: if isOwner(userId) && isValidId(goalId);
+
+        allow create: if isOwner(userId) && isValidId(goalId) &&
+                         request.resource.data.userId == userId &&
+                         request.resource.data.keys().hasAll(['userId', 'title', 'targetAmount', 'currentAmount', 'createdAt']) &&
+                         request.resource.data.keys().hasOnly(['userId', 'title', 'targetAmount', 'currentAmount', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.createdAt is timestamp &&
+                         request.resource.data.createdAt <= request.time &&
+                         (!('updatedAt' in request.resource.data) ||
+                          (request.resource.data.updatedAt is timestamp && request.resource.data.updatedAt <= request.time)) &&
+                         isValidGoal(request.resource.data, userId);
+
+        allow update: if isOwner(userId) && isValidId(goalId) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.updatedAt is timestamp &&
+                         request.resource.data.updatedAt <= request.time &&
+                         isValidGoal(request.resource.data, userId) &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['title', 'targetAmount', 'currentAmount', 'updatedAt']);
+      }
+    }
+  }
+}
